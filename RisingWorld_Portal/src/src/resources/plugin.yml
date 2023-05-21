@@ -1,0 +1,7 @@
+name: Mein 1. Test Plugin
+main: sra.risingworld.portal.PortalPlugin
+version: 1.0.0
+author: srasra
+description: "Nothing at all"
+license: MIT
+website: http://www.YouDontFindMe.com
