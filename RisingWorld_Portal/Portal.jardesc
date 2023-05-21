@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <jardesc>
     <jar path="C:/Program Files (x86)/Steam/steamapps/common/RisingWorld/_New Version/Plugins/Portal/Portal.jar"/>
-    <options buildIfNeeded="true" compress="false" descriptionLocation="/Portal/Portal.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <options buildIfNeeded="true" compress="false" descriptionLocation="/RisingWorld_Portal/Portal.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
     <manifest generateManifest="true" manifestLocation="" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
@@ -11,9 +11,11 @@
         </sealing>
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
-        <file path="/Portal/.project"/>
-        <file path="/Portal/.classpath"/>
-        <javaElement handleIdentifier="=Portal/src"/>
-        <file path="/Portal/.gitignore"/>
+        <file path="/RisingWorld_Portal/.gitignore"/>
+        <file path="/RisingWorld_Portal/.classpath"/>
+        <file path="/RisingWorld_Portal/src/.gitignore"/>
+        <file path="/RisingWorld_Portal/.project"/>
+        <file path="/RisingWorld_Portal/src/.classpath"/>
+        <file path="/RisingWorld_Portal/src/.project"/>
     </selectedElements>
 </jardesc>

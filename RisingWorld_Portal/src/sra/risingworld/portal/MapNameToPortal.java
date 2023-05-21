@@ -1,7 +1,6 @@
 package sra.risingworld.portal;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map.Entry;
 
 import net.risingworld.api.objects.Player;

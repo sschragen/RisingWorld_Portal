@@ -6,7 +6,6 @@ import java.util.List;
 import net.risingworld.api.ui.UIElement;
 import net.risingworld.api.ui.style.FlexDirection;
 import net.risingworld.api.ui.style.Unit;
-import sra.risingworld.portal.ui.UIWindowTitle;
 
 public class UIWindow extends UIElement
 {

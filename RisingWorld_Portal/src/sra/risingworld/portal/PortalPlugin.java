@@ -1,11 +1,8 @@
 package sra.risingworld.portal;
 
-import java.util.HashMap;
 import net.risingworld.api.Plugin;
 import net.risingworld.api.Timer;
-import net.risingworld.api.World;
 import net.risingworld.api.assets.TextureAsset;
-import net.risingworld.api.callbacks.Callback;
 import net.risingworld.api.events.EventMethod;
 import net.risingworld.api.events.Listener;
 import net.risingworld.api.events.player.PlayerEnterAreaEvent;
@@ -13,16 +10,10 @@ import net.risingworld.api.events.player.PlayerKeyEvent;
 import net.risingworld.api.events.player.PlayerLeaveAreaEvent;
 import net.risingworld.api.events.player.PlayerSpawnEvent;
 import net.risingworld.api.objects.Player;
-import net.risingworld.api.ui.style.Pivot;
 import net.risingworld.api.utils.Key;
 import net.risingworld.api.utils.Layer;
 import net.risingworld.api.utils.Quaternion;
 import net.risingworld.api.utils.RaycastResult;
-import net.risingworld.api.utils.Vector3f;
-import sra.risingworld.portal.PortalPrefab.MagicColor;
-import sra.risingworld.portal.PortalPrefab.PortalState;
-import sra.risingworld.utils.UID3;
-import net.risingworld.api.ui.*;
 
 /**
  * @author Stephanus Schragen
@@ -66,7 +57,7 @@ public class PortalPlugin extends Plugin implements Listener
 		{
 			if (result != null) // Jupp machen wir
 			{
-				int instanceID = result.getInstanceID();
+				//int instanceID = result.getInstanceID();
 				if( mapNameToPortals.ContainsKey((int)result.getObjectGlobalID()))
 				//if( mapNameToPortals.ContainsKey(result.getInstanceID()))
 				{

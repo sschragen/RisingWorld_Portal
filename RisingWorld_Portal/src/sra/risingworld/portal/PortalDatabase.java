@@ -5,10 +5,6 @@ import java.sql.ResultSet;
 
 import java.sql.SQLException;
 import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
-
-import net.risingworld.api.Plugin;
 import net.risingworld.api.World;
 import net.risingworld.api.database.Database;
 import net.risingworld.api.utils.Layer;

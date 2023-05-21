@@ -2,7 +2,6 @@ package sra.risingworld.portal;
 
 import net.risingworld.api.assets.AssetBundle;
 import net.risingworld.api.assets.PrefabAsset;
-import net.risingworld.api.assets.StyleSheetAsset;
 import net.risingworld.api.assets.TextureAsset;
 
 public class PortalAsset 

@@ -2,7 +2,6 @@ package sra.risingworld.portal.ui;
 
 import net.risingworld.api.assets.TextureAsset;
 import net.risingworld.api.ui.UIElement;
-import net.risingworld.api.ui.style.ScaleMode;
 import net.risingworld.api.ui.style.Unit;
 
 public class UITexture extends UIElement

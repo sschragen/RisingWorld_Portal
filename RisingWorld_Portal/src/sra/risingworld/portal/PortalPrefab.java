@@ -4,7 +4,6 @@ import net.risingworld.api.utils.Layer;
 import net.risingworld.api.utils.Quaternion;
 import net.risingworld.api.utils.Vector3f;
 import net.risingworld.api.worldelements.Prefab;
-import sra.risingworld.utils.ID3;
 import net.risingworld.api.utils.Utils.ChunkUtils;
 import net.risingworld.api.utils.Utils.MathUtils;
 
@@ -12,9 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import net.risingworld.api.World;
-import net.risingworld.api.objects.Area;
 import net.risingworld.api.objects.world.Chunk;
-import net.risingworld.api.worldelements.Area3D;
 
 public class PortalPrefab extends Prefab{
 	
