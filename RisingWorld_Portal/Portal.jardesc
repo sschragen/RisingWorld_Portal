@@ -11,11 +11,17 @@
         </sealing>
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
-        <file path="/RisingWorld_Portal/.gitignore"/>
-        <file path="/RisingWorld_Portal/.classpath"/>
+        <javaElement handleIdentifier="=RisingWorld_Portal/src&lt;sra.risingworld.utils"/>
         <file path="/RisingWorld_Portal/src/.gitignore"/>
-        <file path="/RisingWorld_Portal/.project"/>
         <file path="/RisingWorld_Portal/src/.classpath"/>
+        <javaElement handleIdentifier="=RisingWorld_Portal/src&lt;sra.risingworld.portal.events"/>
+        <file path="/RisingWorld_Portal/src/resources/plugin.yml"/>
+        <file path="/RisingWorld_Portal/src/resources/.gitignore"/>
+        <file path="/RisingWorld_Portal/.gitignore"/>
+        <javaElement handleIdentifier="=RisingWorld_Portal/src&lt;sra.risingworld.portal"/>
+        <file path="/RisingWorld_Portal/.classpath"/>
+        <file path="/RisingWorld_Portal/.project"/>
         <file path="/RisingWorld_Portal/src/.project"/>
+        <javaElement handleIdentifier="=RisingWorld_Portal/src&lt;sra.risingworld.portal.ui"/>
     </selectedElements>
 </jardesc>

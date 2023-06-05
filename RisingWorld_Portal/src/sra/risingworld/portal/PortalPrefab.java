@@ -1,19 +1,23 @@
 package sra.risingworld.portal;
 
-import net.risingworld.api.utils.Layer;
-import net.risingworld.api.utils.Quaternion;
-import net.risingworld.api.utils.Vector3f;
-import net.risingworld.api.worldelements.Prefab;
-import net.risingworld.api.utils.Utils.ChunkUtils;
-import net.risingworld.api.utils.Utils.MathUtils;
-
 import java.util.HashMap;
 import java.util.Map;
 
+import net.risingworld.api.utils.Layer;
+import net.risingworld.api.utils.Quaternion;
+import net.risingworld.api.utils.Vector3f;
+import net.risingworld.api.worldelements.Area3D;
+import net.risingworld.api.worldelements.Prefab;
+import net.risingworld.api.utils.Utils.ChunkUtils;
+import net.risingworld.api.utils.Utils.MathUtils;
+import net.risingworld.api.Plugin;
+import net.risingworld.api.Server;
 import net.risingworld.api.World;
+import net.risingworld.api.objects.Area;
 import net.risingworld.api.objects.world.Chunk;
 
-public class PortalPrefab extends Prefab{
+public class PortalPrefab extends Prefab 
+{
 	
 	private String DebugPrefix = "Plugin : SRA.Portals.Prefab - ";
 	private void DebugOut (String s)
@@ -21,17 +25,21 @@ public class PortalPrefab extends Prefab{
 		System.out.println(DebugPrefix + s);
 	}
 	
+	@SuppressWarnings("unchecked")
 	public enum PortalState
 	{
 		placing (0),
 		placed (1),
 		ready (2),
-		active(3);
+		activeIn(3),
+		activeOut(4);
 		
 		private int value;
+		@SuppressWarnings("rawtypes")
 		private static Map map = new HashMap<>();
 		
-	    private PortalState(int value) {
+	    private PortalState(int value) 
+	    {
 	        this.value = value;
 	    }
 	    static 
@@ -63,17 +71,10 @@ public class PortalPrefab extends Prefab{
 	    }
 	}
 	
-	public class PortalDefinition
-	{
-		public int  		name;
-		public int  		destination = -1;
-		public long 		owner;
-		public Vector3f 	position = new Vector3f();
-		public Quaternion 	rotation = new Quaternion();	
-		public PortalState  state = PortalState.placing;
-	}
+	
 	
 	public PortalDefinition definition = new PortalDefinition();
+	public TeleportTimer timer = null;
 	
 	private PortalAsset resources;
 	private Prefab theMagic[] = new Prefab[4];
@@ -85,25 +86,22 @@ public class PortalPrefab extends Prefab{
 	private Quaternion [] rotation = new Quaternion[4];
 	private Quaternion quat = new Quaternion();
 	
- 	public void Update ()
- 	{
- 		setLocalPosition (definition.position);
- 		setLocalRotation (definition.rotation);
- 		if (definition.state.getValue() >= 2)
- 			showRunes();
- 	}
+	public Area area;
+	public Area3D area3d;
 	
-	public PortalPrefab (PortalAsset resources,Vector3f pos, Quaternion rot)
+	public PortalPrefab (PortalAsset resources, PortalDefinition newPortalDef)
 	{
 		super(resources.baseAsset);
 		this.resources = resources;
-		this.definition.position = pos;
-		this.definition.rotation = rot;
+		
+		definition = newPortalDef;
+		
 		setLayer("",Layer.OBJECT,true);
 		setLocalScale(2f,2f,2f);
 		
-		setLocalPosition(pos);
-		setLocalRotation(rot);
+		setLocalPosition(definition.position);
+		setLocalRotation(definition.rotation);
+		
 		position[0] = new Vector3f (0,0,0);		
 		position[1] = new Vector3f ( 2.5f,0f,   0f);
 		position[2] = new Vector3f (   0f,0f,-2.5f);
@@ -111,17 +109,41 @@ public class PortalPrefab extends Prefab{
 		rotation[0] = new Quaternion(0,0,0,0);
 		rotation[1] = quat.fromAngles(0, MathUtils.degreeToRadian(-90), 0);
 		rotation[2] = quat.fromAngles(0, 0 , 0);
-		rotation[3] = quat.fromAngles(0, MathUtils.degreeToRadian(90), 0);
-		
-		Vector3f absPos = this.getLocalPosition();
-		DebugOut("Base Position : " + absPos.toString());
+		rotation[3] = quat.fromAngles(0, MathUtils.degreeToRadian(90), 0);	
 	}
 	
+ 	public void createArea ()
+ 	{
+ 		Vector3f absPos = this.getLocalPosition();
+		DebugOut("Base Position : " + absPos.toString());
+		Vector3f a = absPos.add(new Vector3f(-2,-.2f,-2));
+		Vector3f b = absPos.add(new Vector3f(2,8,2));
+		area = new Area(a,b);
+		area.setNameVisible(true);
+		area.setName("Portal : " + this.definition.name);
+		definition.areaID = area.getID();
+		//area.setAttribute("Portal", (Integer)this.definition.name);
+		DebugOut(" Area Created : " + area.toString());
+		area3d = new Area3D (area);
+		setColliderVisible(true);
+		
+		Server.addArea(area);
+ 	};
+	
+  	public void Update ()
+ 	{
+ 		setLocalPosition (definition.position);
+ 		setLocalRotation (definition.rotation);
+ 		if (definition.state.getValue() >= 2)
+ 			showRunes();
+ 	}
+ 	
 	public boolean isMagicActive ()
 	{
-		return ( definition.state.getValue() == PortalState.active.value);
+		if ( definition.state == PortalState.activeIn)  return true;
+		if ( definition.state == PortalState.activeOut) return true;
+		return false;
 	}
-	
 	public void hideMagic ()
 	{
 		for (int i=0; i<4; i++)
@@ -131,28 +153,43 @@ public class PortalPrefab extends Prefab{
 				DebugOut ("Magic "+i+ " off.");
 				removeChild(theMagic[i]);
 				theMagic[i] = null;
-				definition.state = PortalState.ready;
+				
 			}			
 		}
+		definition.state = PortalState.ready;
 	}
-	
-	public void showMagic ()
+	public void showMagicIn ()
 	{
-		hideMagic();
-
+		//hideMagic();
+		DebugOut ("Portal : " + definition.name + " on.");
 		theMagic[0] = new Prefab(resources.magicAsset[0]);
 		addChild (theMagic[0]);
 		for (int i=1;i<4;i++)
 		{
-			DebugOut ("Magic "+i+ " on.");
+			//DebugOut ("Magic "+i+ " on.");
 			theMagic[i] = new Prefab(resources.magicAsset[1]);
 			theMagic[i].setLocalPosition(position[i]);
 			addChild (theMagic[i]);
-			definition.state = PortalState.active;
-		}		
+			
+		}	
+		definition.state = PortalState.activeIn;
+	}
+	public void showMagicOut ()
+	{
+		DebugOut ("Portal : " + definition.name + " on (DST).");
+		theMagic[0] = new Prefab(resources.magicAsset[0]);
+		addChild (theMagic[0]);
+		for (int i=1;i<4;i++)
+		{
+			//DebugOut ("Magic "+i+ " on.");
+			theMagic[i] = new Prefab(resources.magicAsset[1]);
+			theMagic[i].setLocalPosition(position[i]);
+			addChild (theMagic[i]);
+			
+		}
+		definition.state = PortalState.activeOut;
 	}
 
-	
 	public void showRunes ()
 	{		
 		int digit;

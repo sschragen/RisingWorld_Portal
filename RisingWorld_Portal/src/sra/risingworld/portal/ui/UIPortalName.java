@@ -1,6 +1,7 @@
 package sra.risingworld.portal.ui;
 import net.risingworld.api.ui.style.Align;
 import net.risingworld.api.ui.style.Unit;
+import net.risingworld.api.utils.ColorRGBA;
 import sra.risingworld.portal.PortalAsset;
 import sra.risingworld.utils.ID3;
 
@@ -11,10 +12,17 @@ public class UIPortalName extends UIRow
 	private PortalAsset resources;
 	private UITexture[] digit = new UITexture[3];
 	
-	public UIPortalName (int height, Unit unit, ID3 name, PortalAsset resources)
+	public UIPortalName (int height, Unit unit, PortalAsset resources)
 	{
 		super(height,unit);		
 		this.resources = resources;
+		style.borderBottomWidth.set(3f);
+		style.borderTopWidth.set(3f);
+		style.borderLeftWidth.set(3f);
+		style.borderRightWidth.set(3f);
+		
+		style.maxHeight.set(108f);
+		setBorderColor (ColorRGBA.Red);
 		for (int i=0;i<3;i++)
 		{
 			//digit[i] = new UITexture(20	, 20,Unit.Percent,this.resources.HUD_Icons[10]);
@@ -26,7 +34,6 @@ public class UIPortalName extends UIRow
 		}
 		style.alignItems.set(Align.Center);
 		
-		setName(name);
 		//children.add(digit[0]);
 		//children.add(digit[1]);
 		///7children.add(digit[2]);
@@ -38,6 +45,14 @@ public class UIPortalName extends UIRow
 		}
 		
 	}
+	
+	public void setBorderColor (ColorRGBA color)
+	{
+		style.borderBottomColor.set(color);
+		style.borderTopColor.set(color);
+		style.borderLeftColor.set(color);
+		style.borderRightColor.set(color);
+	};
 	
 	public void update()
 	{

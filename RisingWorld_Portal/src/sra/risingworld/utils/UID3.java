@@ -8,6 +8,14 @@ public class UID3 {
 	private HashSet<Integer> UID3_Table = new HashSet<>();
 	private Random rand = new Random();
 	
+	public void DebugOut ()
+	{	System.out.println("UID3 Liste :");
+		UID3_Table.forEach((key) ->
+		{
+			System.out.println(">- " + key);
+		});
+	}
+	
 	public boolean isFull ()
 	{
 		return (UID3_Table.size() == 1000);

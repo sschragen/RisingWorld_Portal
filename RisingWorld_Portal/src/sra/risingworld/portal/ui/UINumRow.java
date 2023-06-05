@@ -10,6 +10,8 @@ public class UINumRow extends UIRow
 	//private PortalAsset resources;
 	//private UITexture[] digit = new UITexture[3];
 	
+
+	
 	public UINumRow (int height, Unit unit, UITexture[] key, PortalAsset resources)
 	{
 		super(height,unit);

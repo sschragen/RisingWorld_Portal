@@ -3,6 +3,7 @@
  */
 package sra.risingworld.portal;
 
+import net.risingworld.api.Plugin;
 import net.risingworld.api.callbacks.Callback;
 import net.risingworld.api.events.EventMethod;
 import net.risingworld.api.events.Listener;
@@ -14,15 +15,15 @@ import net.risingworld.api.ui.style.FlexDirection;
 import net.risingworld.api.ui.style.Justify;
 import net.risingworld.api.ui.style.Pivot;
 import net.risingworld.api.ui.style.Unit;
+import net.risingworld.api.utils.ColorRGBA;
 import sra.risingworld.portal.ui.*;
 import sra.risingworld.utils.ID3;
-import sra.risingworld.utils.UID3;
 
 /**
  * @author Stephanus Schragen
  *
  */
-public class PortalHUD extends UIWindow implements Listener
+public class PortalHUD extends UIWindow implements Listener, Callback<Integer>
 {
 	private String DebugPrefix = "Plugin : SRA.Portals - PortalHUD - ";
 	private void DebugOut (String s)
@@ -30,11 +31,12 @@ public class PortalHUD extends UIWindow implements Listener
 		System.out.println(DebugPrefix + s);
 	}
 	
-	private PortalPrefab thePortal;
+	private PortalPrefab portal;
 	private PortalAsset resources;
 	
 	private ID3 newDestination;
-	private UID3 idList;
+	//private UID3 idList;
+	private PortalMap portalMap;
 	
 	private UIPortalName 	ui_portalName;// = new UIPortalName(33,Unit.Percent,-1,resources.HUD_Icons);
 	private UIButton 		ui_clear;
@@ -50,16 +52,19 @@ public class PortalHUD extends UIWindow implements Listener
 	
 	private int inputDigit = 0;
 	
-	private Callback<PortalHUDEvent> cb;
 	private Player player ;	
+	private Plugin plugin;
 	
 	@EventMethod
  	public void onClick(PlayerUIElementClickEvent evt)
 	{
+		Player player = evt.getPlayer();
 		UIElement clickedUI = evt.getUIElement();
 		if (clickedUI == ui_clear)
 		{
 			clearDigits();
+			
+			ui_portalName.setBorderColor(ColorRGBA.Red);
 			
 			evt.getPlayer().showStatusMessage("clear clicked", 5);
 			System.out.println("@onClick : received");
@@ -73,7 +78,6 @@ public class PortalHUD extends UIWindow implements Listener
 				{
 					if (clickedUI == ui_numPad[i][j] )
 					{
-						PortalHUDEvent newEvt = new PortalHUDEvent();
 						switch ( num[i][j]-'0')
 						{
 							case 0,1,2,3,4,5,6,7,8,9 :
@@ -96,35 +100,42 @@ public class PortalHUD extends UIWindow implements Listener
 									
 									if ( isDestinationInList() )
 									{
-										thePortal.definition.destination = ui_portalName.name.toInt();
-										ui_numPad[3][2].setOpacity(0f);
-										ui_numPad[3][2].update();
+										portal.definition.dest = ui_portalName.name.toInt();
+										ui_numPad[3][2].setOpacity(1f);
+										ui_numPad[3][2].updateStyle();
+										ui_portalName.setBorderColor(ColorRGBA.Green);
+										ui_portalName.updateStyle();
+										player.sendTextMessage("found");
+									}
+									else 
+									{
+										ui_portalName.setBorderColor(ColorRGBA.Red);
+										ui_portalName.updateStyle();
+										ui_numPad[3][2].setOpacity(.4f);
+										ui_numPad[3][2].updateStyle();
 									};
 								}
 								else 
 								{
-									ui_numPad[3][2].setOpacity(0f);
-									ui_numPad[3][2].update();
+									ui_portalName.setBorderColor(ColorRGBA.Red);
+									ui_portalName.updateStyle();
+									ui_numPad[3][2].setOpacity(.4f);
+									ui_numPad[3][2].updateStyle();
 								}
 								break;
 							case 13 :
 								//abbruch
 								evt.getPlayer().showStatusMessage("cancel clicked", 5);
-								newEvt.buttonClicked = "CANCEL";
-								newEvt.newDestination = -1;
-								cb.onCall(newEvt);
+								onCall(0);
 								break;
 							case 12 :
 								//ok
 								evt.getPlayer().showStatusMessage("ok clicked", 5);
-								ID3 name = ui_portalName.getName();
-								if ( name.isValid())
+								newDestination = ui_portalName.getName();
+								if ( newDestination.isValid())
 								{
-									
-									thePortal.definition.destination = name.toInt();
-									newEvt.buttonClicked = "OK";
-									newEvt.newDestination = thePortal.definition.destination;
-									cb.onCall(newEvt);
+									//portal.definition.destination = name.toInt();
+									onCall(1);
 								}
 								break;
 						}
@@ -165,29 +176,28 @@ public class PortalHUD extends UIWindow implements Listener
 		{
 			return false;
 		}
+		System.out.println("New Destination : "+i);
+		System.out.println("Liste : ");
+		//idList.DebugOut();
 		
-		return ( i != thePortal.definition.name & idList.isUsed(new ID3(name)));
+		return ( i != portal.definition.name && portalMap.IsNameInMap(i) );//  idList.isUsed(i));
 		
 	}
-		
-		
-	public PortalHUD (PortalPrefab thePortal,UID3 idList,PortalAsset resources)
+
+	public PortalHUD (Plugin plugin, Player player, PortalMap portalMap,PortalAsset resources)
 	{	
 		super(40,40,Unit.Percent,"Portal Destination");
 		setPosition(50, 50, true);
 		setPivot(Pivot.MiddleCenter);
 		
-		this.thePortal = thePortal;
+		this.plugin    = plugin;
+		this.player    = player;
 		this.resources = resources;
-		this.idList = idList;
-		if (thePortal.definition.destination == -1)
-			newDestination = new ID3("   ");
-		else
-			newDestination = new ID3 (thePortal.definition.destination);
+		this.portalMap = portalMap;
 		
 		canvas.style.flexDirection.set(FlexDirection.Row);
 		
-		ui_portalName = new UIPortalName(20,Unit.Percent,newDestination,this.resources);
+		ui_portalName = new UIPortalName(20,Unit.Percent,this.resources);
 		ui_clear = new UIButton (64,64,Unit.Pixel,resources.HUD_Icons[11]);
 		
 		ui_clear.style.justifyContent.set(Justify.Center);
@@ -225,15 +235,71 @@ public class PortalHUD extends UIWindow implements Listener
 		
 		//canvas.addChild (HudLeft());
 		//canvas.addChild (HudRight());
-		update();
+		
 		
 	}	
 
-	public void showHUD (Player player, Callback<PortalHUDEvent> cb)
+	public void showHUD (PortalPrefab portal)
 	{
-		this.cb = cb;
-		this.player = player;
-		player.addUIElement(this);		
+		this.portal = portal;
+		inputDigit = 0;
+		
+		if (portal.definition.dest == -1)
+			newDestination = new ID3("   ");
+		else
+			newDestination = new ID3 (portal.definition.dest);
+		
+		ui_portalName.setName(newDestination);
+		
+		if ( isDestinationInList() )
+		{
+			portal.definition.dest = ui_portalName.name.toInt();
+			ui_numPad[3][2].setOpacity(1f);
+			ui_numPad[3][2].updateStyle();
+			ui_portalName.setBorderColor(ColorRGBA.Green);
+			ui_portalName.updateStyle();
+		}
+		else
+		{
+			ui_portalName.setBorderColor(ColorRGBA.Red);
+			ui_portalName.updateStyle();
+			ui_numPad[3][2].setOpacity(.4f);
+			ui_numPad[3][2].updateStyle();
+		}
+		update();
+		
+		player.addUIElement(this);	
+		player.setMouseCursorVisible(true);
+		plugin.registerEventListener(this);
+		
+	}
+
+	@Override
+	public void onCall(Integer clicked) 
+	{
+		// TODO Auto-generated method stub
+		PortalHUDEvent newEvent;
+		switch (clicked)
+		{
+			case 0: // Abbruch
+				newEvent = new PortalHUDEvent(player, portal, PortalHUDEvent.Type.CLOSE);
+				plugin.triggerEvent(newEvent);
+				break;
+				
+			case 1: // OK
+				portal.definition.dest = newDestination.toInt();
+				newEvent = new PortalHUDEvent(player, portal, PortalHUDEvent.Type.OK);
+				plugin.triggerEvent(newEvent);
+				break;
+				
+			default :
+				newEvent = new PortalHUDEvent(player, portal,PortalHUDEvent.Type.CLOSE);
+				plugin.triggerEvent(newEvent);
+				break;
+		}
+		plugin.unregisterEventListener(this);
+		player.removeUIElement(this);
+		player.setMouseCursorVisible(false);	
 	}
 
 

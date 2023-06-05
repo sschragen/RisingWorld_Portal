@@ -1,19 +1,48 @@
 package sra.risingworld.portal;
 
+/*
+ * ToDo
+ * 
+ * 
+ *                                     		- portal bauen mit drehen
+ * - das Teleporten an sich
+ * 
+ * - löschen eines Portals noch nicht implementiert / Event -> an spieler -> database
+ * - Spechiern von Dst Änderung in database
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+
 import net.risingworld.api.Plugin;
-import net.risingworld.api.Timer;
-import net.risingworld.api.assets.TextureAsset;
+import net.risingworld.api.Server;
 import net.risingworld.api.events.EventMethod;
 import net.risingworld.api.events.Listener;
+import net.risingworld.api.events.player.PlayerDisconnectEvent;
 import net.risingworld.api.events.player.PlayerEnterAreaEvent;
 import net.risingworld.api.events.player.PlayerKeyEvent;
 import net.risingworld.api.events.player.PlayerLeaveAreaEvent;
 import net.risingworld.api.events.player.PlayerSpawnEvent;
+import net.risingworld.api.objects.Area;
 import net.risingworld.api.objects.Player;
 import net.risingworld.api.utils.Key;
 import net.risingworld.api.utils.Layer;
 import net.risingworld.api.utils.Quaternion;
 import net.risingworld.api.utils.RaycastResult;
+import net.risingworld.api.utils.Vector3f;
+import sra.risingworld.portal.PortalPrefab.PortalState;
+import sra.risingworld.portal.events.*;
+import sra.risingworld.utils.MenuTimer;
 
 /**
  * @author Stephanus Schragen
@@ -27,277 +56,294 @@ public class PortalPlugin extends Plugin implements Listener
 	{
 		System.out.println(DebugPrefix + s);
 	}
+	private PortalAsset 	theResources;
+	private PortalMap 		portalMap;
+	//private Player 			player;
+	private PlayerActionMap playerActionMap;
 	
-	public PortalAsset theResources;
-	private PortalPrefab InteractPortal = null;
-	private MapNameToPortal mapNameToPortals;
-	
-	
-	public Player player;
-	private Timer KeyF_Timer;
-	
-	private PortalHUD portalHUD = null;	
-	
-	private void DebugOut (PortalPrefab.PortalDefinition value)
+	public boolean isValidDestination(PortalPrefab interactPortal)
 	{
-		DebugOut ("name        : " + value.name);
-		DebugOut ("destination : " + value.destination);
-		DebugOut ("owner       : " + value.owner);
-		//DebugOut ("postion     : " + value.position.toString());
-		//DebugOut ("rotation    : " + value.rotation.toString());
-	}
-	
-	
-	
-	public void EventHandlerKey_F_Pressed (Player player)
-	{
-		// prüfen ob wir ein Portal anschauen ?
-		int layerMask = Layer.getBitmask(Layer.OBJECT);
-		player.raycast(layerMask, (RaycastResult result) -> 
-		{
-			if (result != null) // Jupp machen wir
-			{
-				//int instanceID = result.getInstanceID();
-				if( mapNameToPortals.ContainsKey((int)result.getObjectGlobalID()))
-				//if( mapNameToPortals.ContainsKey(result.getInstanceID()))
-				{
-					InteractPortal = mapNameToPortals.GetById((int)result.getObjectGlobalID());
-					//player.sendTextMessage("Portal ID " + InteractPortal + " hit by raycast.");
-					KeyF_Timer = new Timer(1.5f,0f,1,() ->
-					{
-						KeyF_Timer.pause();
-						String[] descr = new String[4];
-						descr[0] = "Einstellungen";
-						descr[1] = "Portal öffnen";
-						descr[2] = "Portal Entfernen";
-						descr[3] = "Abbruch";
-						
-						String[] over = new String[4];
-						over[0] = "Einst";
-						over[1] = "Portal öffnen";
-						over[2] = "Portal Entfernen";
-						over[3] = "Abbruch";
-						
-						TextureAsset[] icons = new TextureAsset[4];
-						icons[0] = theResources.portalIcons[3];
-						icons[1] = theResources.portalIcons[2];
-						icons[2] = theResources.portalIcons[0];
-						icons[3] = theResources.portalIcons[4];
-							
-						//player.showRadialMenu(icons, descr, null, true, CallbackRadialMenu);
-						/*
-						(Integer Choosen) -> 
-						{
-							
-					    });
-					    */
-					});
-					KeyF_Timer.start();							
-				}
-			}
-			else
-			{
-				player.showStatusMessage("Not Hit.", 5);
-				if (portalHUD != null)
-				{
-					player.showStatusMessage("HUD aus",5);
-					player.setMouseCursorVisible(false);
-					unregisterEventListener(portalHUD);
-					player.removeUIElement(portalHUD);
-					portalHUD = null;
-				}						
-			}
-		});
-	}
+		// Ziel muss ein bestehendes Portal sein
+		// und
+		// Ziel darf nicht Ursprung sein
+		
+		return portalMap.IsNameInMap(interactPortal.definition.name) && (interactPortal.definition.dest == interactPortal.definition.name);
 
-	
-	
-	
-	public void EventHandlerKey_B_Pressed (Player player)
-	{
-		player.sendTextMessage("Player creates a new Portal");
-		int layerMask = Layer.getBitmask(Layer.OBJECT, Layer.TERRAIN,Layer.CONSTRUCTION,Layer.DEFAULT);
-	
-		player.raycast(layerMask, (RaycastResult result) -> 
-		{
-			if (result != null) 
-			{
-				PortalPrefab newPortal = new PortalPrefab(theResources,result.getCollisionPoint(),new Quaternion());
-				newPortal.definition.owner = player.getDbID();
-				newPortal.definition.position = result.getCollisionPoint();
-				//newPortal.definition.rotation = player.getRotation();
-				newPortal.definition.rotation = new Quaternion ();
-				newPortal.definition.name = mapNameToPortals.portalNames.Random();	
-				newPortal.definition.state = PortalPrefab.PortalState.ready;
-				newPortal.Update();				
-				mapNameToPortals.CreateNewPortal(player);
-				//player.addGameObject(newPortal);
-				//mapNameToPortals.Add (newPortal);
-				player.sendTextMessage("New Portal getID() = "+newPortal.getID());
-				//thePortals.put(newPortal.getID(), newPortal);
-				
-				player.showStatusMessage("new Portal with Name " + newPortal.definition.name + "created.", 5);
-			}
-		});
 	}
 	
-	@Override
-	public void onLoad() 
+	@Override public void onLoad() 
 	{
+		
+		
 		DebugOut("gestartet.");		
 		theResources = new PortalAsset(getPath());
 		DebugOut("Resourcen wurden geladen.");
 		
-		mapNameToPortals = new MapNameToPortal(this,theResources);
+		portalMap = new PortalMap(this,theResources);
+		registerEventListener(portalMap);
+		
+		playerActionMap = new PlayerActionMap();
 	}
-
-	@Override
-	public void onEnable() 
+	@Override public void onEnable() 
 	{
 		registerEventListener(this);
 	}
-	
-	@Override
-	public void onDisable() 
+	@Override public void onDisable() 
 	{
 		unregisterEventListener(this);
-		mapNameToPortals.Close ();		
+		portalMap.Close ();		
 		DebugOut("beendet.");
 
 	}
 	
-	@EventMethod
-	public void onEnterArea (PlayerEnterAreaEvent evt)
+	@EventMethod public void onEnterArea (PlayerEnterAreaEvent evt)
 	{
+		Player player = evt.getPlayer();
+		Area a = evt.getArea();
 		
-	}
-
-	@EventMethod
-	public void onLeaveArea (PlayerLeaveAreaEvent evt)
-	{
+		String s = a.getName();
 		
+		if (s != null)
+		{
+			player.sendTextMessage("Enter Area : " + s );
+			String[] words = s.split(" ");
+			if (words.length == 3)
+			{ 
+				if (words[0].equals("Portal") )
+				{
+					player.sendTextMessage("Enter Portal Area");
+					Integer name = Integer.valueOf(words[3]);
+					player.sendTextMessage("Enter Portal " + name);
+					PortalPrefab act = portalMap.GetByName(name);
+					player.sendTextMessage("Enter Portal " + name);
+					if (act.definition.state== PortalPrefab.PortalState.activeOut)
+					{
+						player.shake(1, 2);
+						PortalPrefab dst = portalMap.GetByName(act.definition.dest);
+						player.setPosition(dst.getLocalPosition());
+					}
+					else player.shake(.5f, 0.5f);
+				}
+			}
+		}
+		else 
+			player.sendTextMessage("Enter Area has no name");
+		player.sendTextMessage("Enter Area Event ... Exit" );
 	}
-	
-	@EventMethod	
-	public void onPlayerSpawns (PlayerSpawnEvent evt) 
+	@EventMethod public void onLeaveArea (PlayerLeaveAreaEvent evt)
 	{
-		player = evt.getPlayer();
+		Player player = evt.getPlayer();
+		Area a = evt.getArea();
+		//player.sendTextMessage("Leave Area Event ..." + a.getName());
+	}
+	@EventMethod public void onPlayerSpawns (PlayerSpawnEvent evt) 
+	{
+		Player player = evt.getPlayer();		
+		PlayerAction playerAction = playerActionMap.Put(player);
+		playerAction.KeyF_Timer = new MenuTimer(this, player);
+		playerAction.portalHUD  = new PortalHUD (this, player, portalMap ,theResources);
+		playerAction.radialHUD  = new PortalRadialMenu(this, player, portalMap, theResources);
 		
 		player.setListenForKeyInput(true);
-		player.registerKeys(Key.B, Key.F, Key.R, Key.N);
-		mapNameToPortals.AddAllPortals(player);
+		player.registerKeys(Key.B, Key.F, Key.R, Key.H);
+		portalMap.theMap.forEach((key,value) -> 
+		{
+			player.addGameObject(value);
+			player.addGameObject(value.area3d);
+		});
 		
 		player.showSuccessMessageBox("<color=red>Willkommen","Portals erfolgreich geladen.");
 	}
-	
-	@EventMethod
-	public void onKeyPressed (PlayerKeyEvent evt) 
-	{	
-		Player player = evt.getPlayer();
-		if (evt.isPressed())
-		{
-			switch (evt.getKey())
-			{
-				case F :	{	
-								EventHandlerKey_F_Pressed (player);
-								break;
-							}
-				case B :    {
-								EventHandlerKey_B_Pressed (player);
-								break;
-							}
-				case R :	{	// ONLY FOR TEST AND DEBUG
-								mapNameToPortals.RemoveAllPortals(player);
-								DebugOut ("Database reset RESET !!!");
-								break;
-							}
-				default:	{
-								break;
-							}
-			}
-		}
-		else // Button was released
-		{
-			switch (evt.getKey())
-			{
-				case F :	{	
-								EventHandlerKey_F_Released (player);
-								break;
-							}
-				default:	{
-								break;
-							}
-			}
-		}
-			
-	}	
-	
-	public void EventHandlerKey_F_Released (Player player)
+	@EventMethod public void onPlayerDisconnect (PlayerDisconnectEvent evt)
 	{
-		if (InteractPortal != null) 
+		Player player = evt.getPlayer();
+		playerActionMap.Remove(player);
+	}
+	
+	@EventMethod public void onPortalRadialHUD (PortalRadialHUDEvent evt)
+	{
+		Player player = evt.GetPlayer();
+		PlayerAction playerAction = playerActionMap.Get(player);
+		switch (evt.GetMessage())
 		{
-			if (KeyF_Timer.isActive() & !KeyF_Timer.isPaused())
-			{
-				KeyF_Timer.kill();
-				player.sendTextMessage("Portal ID " + InteractPortal + " standard execute.");
-
-				if (InteractPortal.definition.destination == -1)
-				{
-					if (portalHUD == null)
-					{
-						portalHUD = new PortalHUD(InteractPortal, mapNameToPortals.portalNames ,theResources);
-						portalHUD.showHUD(player, (PortalHUDEvent result) -> {
-							if (result.buttonClicked == "OK" )
-							{
-								InteractPortal.definition.destination = result.newDestination;
-								InteractPortal.Update();
-							};
-							// HUD entfernen
-							player.showStatusMessage("HUD aus",5);
-							player.setMouseCursorVisible(false);
-							unregisterEventListener(portalHUD);
-							player.removeUIElement(portalHUD);
-							portalHUD = null;
-						});
-						// Toggle
-						// HUD aufbauen
-						player.addUIElement(portalHUD);
-						player.showStatusMessage("HUD an",5);
-						player.setMouseCursorVisible(true);
-						registerEventListener(portalHUD);
-					}
-					else
-					{		
-						// Toggle
-						// HUD enfernen
-						player.showStatusMessage("HUD aus",5);
-						player.setMouseCursorVisible(false);
-						unregisterEventListener(portalHUD);
-						player.removeUIElement(portalHUD);
-						portalHUD = null;
-						//InteractPortal = null;
-					}
-				}
-				else
-				{
-					if (InteractPortal.isMagicActive())
-					{
-						InteractPortal.hideMagic();
-						player.sendTextMessage("Portal ID " + InteractPortal + " Magic aus.");
-					}
-					else
-					{
-						InteractPortal.showMagic();
-						player.sendTextMessage("Portal ID " + InteractPortal + " Magic an.");
-					}
-				}
-			}
-			else //
-			{
+			case TimerStart : 
+				// evt. mal einen Timerbalken zeigen
+				//player.sendTextMessage("Timer Start");
+				break;
+			case TimerStop :
+				// evtl den Timerbalken entfernen
+				//jetzt das RadialMenu zeigen
 				
-			}
+				playerAction.radialHUD.showRadialMenu(playerAction.KeyF_InteractPortal);
+				//player.sendTextMessage("Timer Stop");
+				
+				break;
+			case TimerAbort :
+				// evtl den Timerbalken entfernen
+				// schauen wir immer noch auf das portal ??
+				int layerMask = Layer.getBitmask(Layer.OBJECT);
+				player.raycast(layerMask, (RaycastResult result) -> 
+				{   // haben wir etwas getroffen ?
+					if (result != null) 
+					{	// prüfe ob das Object ein Portal ist ?
+						if( portalMap.ContainsKey((int)result.getObjectGlobalID()))
+						{	// ist ein Portal ?
+							player.sendTextMessage("ist ein Portal");
+							PortalPrefab actPortal = portalMap.GetById((int)result.getObjectGlobalID());
+							if (actPortal == playerAction.KeyF_InteractPortal)
+							{	// ist es noch dasselbe wie bei Timer Start ?						
+								if (portalMap.IsValid(actPortal.definition.dest))
+								{	// Portal zum teleportieren öffnen
+									player.sendTextMessage("Sende Evt ÖffnePortal");
+									PortalPrefab dstPortal = portalMap.GetByName(actPortal.definition.dest);
+									PortalTeleportEvent newPortalTeleportEvent = new PortalTeleportEvent(actPortal,dstPortal, PortalTeleportEvent.Type.OPEN);
+									triggerEvent(newPortalTeleportEvent);
+								}
+								else
+								{	// Portal Einstellung öffnen
+									player.sendTextMessage("Sende Evt ShowUI");
+									PortalShowUIEvent newShowUIEvent = new PortalShowUIEvent(player,actPortal);
+									triggerEvent(newShowUIEvent);
+								}
+							}
+						}
+					}
+				});				
+				player.sendTextMessage("Timer Abort");
+				break;
+
+			default :
+				DebugOut ("onPortalRadialHUD - unhandled Event.");
+				break;
 		}
 	}
 	
+	@EventMethod public void onKeyPressed (PlayerKeyEvent evt) 
+	{		
+		Player player = evt.getPlayer();
+		PlayerAction playerAction = playerActionMap.Get(player);
+		boolean keyPressed = evt.isPressed();
+		int layerMask;
+		switch (evt.getKey())
+		{
+			case H :
+				// Test
+				Area[] a = Server.getAllAreas();
+				DebugOut ("Anzahl an Aereas : "+a.length);
+				Server
+				break;
+			case F :				
+				// Interact with a Portal
+				// do we look at a Portal ?
+				layerMask = Layer.getBitmask(Layer.OBJECT);
+				player.raycast(layerMask, (RaycastResult result) -> 
+				{
+					if (result != null) 
+					{	// 
+						if (keyPressed)
+						{	// prüfe ob das Object ein Portal ist
+							player.sendTextMessage("Object hit");
+							if( portalMap.ContainsKey((int)result.getObjectGlobalID()))
+							{	// taste gedrückt
+								// yes we do Start the Timer before we show the RadialMenu
+								player.sendTextMessage("Portal hit");
+								PortalPrefab interactPortal = portalMap.GetById((int)result.getObjectGlobalID());
+								
+								if ( (player.getDbID() == interactPortal.definition.owner) || player.isAdmin() )
+								{
+									playerAction.KeyF_InteractPortal = interactPortal;
+									playerAction.KeyF_Trigger = true;
+									// start a Timer 
+									playerAction.KeyF_Timer.start(playerAction.KeyF_InteractPortal);
+								}
+								else
+								{
+									player.showStatusMessage("Not allowed.", 5);
+								}
+							}
+						}
+						else // taste losgelassen
+						{ 
+							if (playerAction.KeyF_Timer.isActive()) 
+							{
+								playerAction.KeyF_Timer.abort();
+							}
+						}
+					}
+					
+				});
+				break;
+						
+			case B :      
+				// später über CustomItem implementieren
+				if (evt.isPressed())
+				{
+					layerMask = Layer.getBitmask(Layer.OBJECT, Layer.TERRAIN,Layer.CONSTRUCTION,Layer.DEFAULT);
+					player.raycast(layerMask, (RaycastResult result) -> 
+					{
+						if (result != null) 
+						{
+							PortalDefinition newPortalDef = new PortalDefinition();
+								newPortalDef.name 			= portalMap.portalNames.Random();
+								newPortalDef.dest		 	= -1;
+								newPortalDef.owner       	= player.getDbID();   
+								newPortalDef.areaID			= null;
+								newPortalDef.position 		= result.getCollisionPoint();
+								newPortalDef.rotation 		= new Quaternion();
+								newPortalDef.state 			= PortalPrefab.PortalState.ready;;
+							
+							PortalPrefab newPortal = new PortalPrefab(
+								theResources,
+								newPortalDef								
+							);
+							newPortal.Update();	
+																								
+							PortalMapEvent newPortalMapEvent = new PortalMapEvent(PortalMapEvent.Type.SPAWN,newPortal);
+							triggerEvent(newPortalMapEvent);	
+							
+						}
+					});
+					
+				}
+				break;
+	
+			case R :	
+				// ONLY FOR TEST AND DEBUG
+				if (evt.isPressed())
+				{
+					Player[] players = Server.getAllPlayers();
+					
+					portalMap.theMap.forEach((key,value) -> 
+					{
+						int i=0;
+						while (i<players.length)
+						{
+							players[i].removeGameObject(value);
+							players[i].removeGameObject(value.area3d);
+							i++;
+						}
+					});
+					
+					playerActionMap.Clear ();
+					
+					PortalMapEvent newPortalMapEvent = new PortalMapEvent(PortalMapEvent.Type.RESET);
+					triggerEvent (newPortalMapEvent);
+					DebugOut ("Database reset RESET triggered !!!");
+				}
+				break;
+	
+			default:	
+				break;
+						
+		}		
+	}		
+
+	@EventMethod public void onPortalShowUIEvent (PortalShowUIEvent evt)
+	{
+		Player player = evt.GetPlayer();
+		player.sendTextMessage("PortalShowUIEvent Event ");
+		PlayerAction playerAction = playerActionMap.Get(player);
+		playerAction.portalHUD.showHUD(evt.getPortal());		
+	}
 
 } //EOF

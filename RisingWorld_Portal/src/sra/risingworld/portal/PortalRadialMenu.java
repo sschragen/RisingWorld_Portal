@@ -1,26 +1,30 @@
 package sra.risingworld.portal;
 
+import net.risingworld.api.Plugin;
 import net.risingworld.api.assets.TextureAsset;
 import net.risingworld.api.callbacks.Callback;
 import net.risingworld.api.objects.Player;
+import sra.risingworld.portal.events.*;
 
 public class PortalRadialMenu implements Callback<Integer>
 {
 	private Player player;
-	private boolean isOn = false;
+	public boolean isOn = false;
 	
 	private String[] descr = new String[4];
 	private String[] over = new String[4];
 	private TextureAsset[] icons = new TextureAsset[4];
 	
 	private PortalPrefab interactPortal;
-	private MapNameToPortal nameToPortals;
+	private PortalMap portalMap;
+	private Plugin plugin;
 	
-	public PortalRadialMenu (Player player,PortalAsset theResources)
+	public PortalRadialMenu (Plugin plugin, Player player, PortalMap portalMap, PortalAsset theResources)
 	{
-		this.player = player;
+		this.player    = player;
+		this.plugin    = plugin;	
+		this.portalMap = portalMap; 
 		interactPortal = null;
-		nameToPortals = null;
 		
 		descr[0] = "Einstellungen";
 		descr[1] = "Portal öffnen";
@@ -38,44 +42,43 @@ public class PortalRadialMenu implements Callback<Integer>
 		icons[3] = theResources.portalIcons[4];
 	}
 	
-	public void showRadialMenu (PortalPrefab interactPortal, MapNameToPortal portalMap)
+	public void showRadialMenu (PortalPrefab interactPortal)
 	{
 		player.showRadialMenu(icons, descr, null, true, this );
-		isOn = true;
+		isOn = true;		
 		this.interactPortal = interactPortal;
 	};
 	
 	public void onCall (Integer choosen)
 	{
 		isOn = false;
-		player.sendTextMessage("Choosen " + choosen);
 		switch (choosen)
 		{
 			case 0: 
 				// Einstellung
-				
-				// write to database
+				PortalShowUIEvent newShowUIEvent = new PortalShowUIEvent(player,interactPortal);
+				plugin.triggerEvent(newShowUIEvent);
 				break;
+				
 			case 1: 
 				//dial out
-				if (interactPortal != null)
-					interactPortal.showMagic ();
-					// and the other Portal
+				PortalPrefab dstPortal = portalMap.GetByName(interactPortal.definition.dest);
+				PortalTeleportEvent newTeleportEvent = new PortalTeleportEvent(interactPortal,dstPortal, PortalTeleportEvent.Type.OPEN);
+				plugin.triggerEvent(newTeleportEvent);
 				break;
+				
 			case 2: 
 				// entfernen
-				nameToPortals.RemovePortal(interactPortal);
-				//theDatabase.DeleteFromDatabase(interactPortal);
-				//thePortals.remove(result.getObjectGlobalID());
-				player.removeGameObject(interactPortal);
+				PortalMapEvent newPortalMapEvent = new PortalMapEvent(PortalMapEvent.Type.DELETE,interactPortal);
+				plugin.triggerEvent (newPortalMapEvent);
 				
-				// write to database
+				break;
 				
 			case 3: 
 				// abbruch
+				break;
 		}
 		interactPortal = null;
-	}
-	
+	}	
 	
 }

@@ -5,6 +5,8 @@ import java.sql.ResultSet;
 
 import java.sql.SQLException;
 import java.util.HashMap;
+
+import net.risingworld.api.Server;
 import net.risingworld.api.World;
 import net.risingworld.api.database.Database;
 import net.risingworld.api.utils.Layer;
@@ -14,7 +16,7 @@ import sra.risingworld.portal.PortalPrefab.PortalState;
 
 public class PortalDatabase 
 {
-	private Database database;
+	private Database database = null;
 	static String databaseName = "SRAPortals.db";
 	
 	private PortalPlugin plugin;
@@ -29,8 +31,8 @@ public class PortalDatabase
 	{
 		this.plugin = plugin;
 
-		OpenDatabase();
-		CreateDatabaseTable();
+		if (!OpenDatabase())
+			CreateDatabaseTables();
 	}
 	
 	public boolean WriteToDatabase (PortalPrefab onePortal)
@@ -41,36 +43,21 @@ public class PortalDatabase
 					  
 					+ "`name`, "
 					+ "`destination`, " 
-					+ "`owner`, " 
+					+ "`owner`, "
+					+ "`areaid` "
 					+ "`state`, "
 					+ "`position`, "
 					+ "`rotation`) "
 					+ "VALUES (" 
 					+ onePortal.definition.name                + ", " 
-					+ onePortal.definition.destination         + ", " 
+					+ onePortal.definition.dest                + ", " 
 					+ onePortal.definition.owner               + ", " 
+					+ onePortal.definition.areaID			   + ", "
 					+ onePortal.definition.state.getValue()    + ", "
 					+ "'" + onePortal.definition.position.toString() + "', " 
 					+ "'" + onePortal.definition.rotation.toString() + "' ); "
 					;
 			database.executeUpdate(SQL);
-			/*
-			database.executeUpdate("INSERT INTO `portals` ( "
-				+ "`name`, "
-				+ "`destination`, " 
-				+ "`owner`, " 
-				+ "`state`, "
-				+ "`position`, "
-				+ "`rotation`) "
-				+ "VALUES (`" 
-				+ onePortal.definition.name                + "`, `" 
-				+ onePortal.definition.destination         + "`, `" 
-				+ onePortal.definition.owner               + "`, `" 
-				+ onePortal.definition.state.getValue()    + "`, `"
-				+ onePortal.definition.position.toString() + "`, `" 
-				+ onePortal.definition.rotation.toString() + "`);"
-			);
-			*/
 		}
 		catch(Exception err) 
 		{
@@ -93,22 +80,26 @@ public class PortalDatabase
 		});
 	}
 	
-	public PortalPrefab LoadFromDatabase (int name)
+	public PortalPrefab LoadFromDatabase (int name, PortalAsset theResources)
 	{
 		PortalPrefab newPortal = null;
 		try
 		{
 			ResultSet result = database.executeQuery("SELECT * FROM `portals` WHERE `name` = "+name+";");
 			
+			PortalDefinition newPortalDef = new PortalDefinition();
+				newPortalDef.name 			= result.getInt("name");
+				newPortalDef.dest		 	= result.getInt("destination");
+				newPortalDef.owner       	= result.getLong("owner");   
+				newPortalDef.areaID			= result.getLong("areaid");
+				newPortalDef.position 		= new Vector3f().fromString(result.getString("position"));
+				newPortalDef.rotation 		= new Quaternion().fromString(result.getString("rotation"));
+				newPortalDef.state 			= PortalState.valueOf(result.getInt("state"));
+				
 			newPortal = new PortalPrefab(
-    				plugin.theResources,
-    				new Vector3f().fromString(result.getString("position")),
-    				new Quaternion().fromString(result.getString("rotation"))
+    				theResources,
+    				newPortalDef    				
     		);    		
-			newPortal.definition.name 	     	= result.getInt("name");
-			newPortal.definition.destination 	= result.getInt("destination");
-			newPortal.definition.owner       	= result.getLong("owner");            			    		
-    		newPortal.definition.state 			= PortalState.valueOf(result.getInt("state"));//PortalPrefab.PortalState.ready;
     		newPortal.setLayer(Layer.OBJECT);
 		}
 		catch(SQLException e)
@@ -123,7 +114,7 @@ public class PortalDatabase
 		return newPortal;
 	}
  
-	public HashMap<Integer, PortalPrefab> LoadFromDatabase ()
+	public HashMap<Integer, PortalPrefab> LoadFromDatabase (PortalAsset theResources)
 	{
 		HashMap<Integer, PortalPrefab> thePortals = new HashMap<Integer, PortalPrefab>();
 		int anzahl = 0;
@@ -134,17 +125,20 @@ public class PortalDatabase
             	//Iterate through all rows
             	while(result.next())
             	{
-            		anzahl++;            		
-            		PortalPrefab newPortal = new PortalPrefab(
-            				plugin.theResources,
-            				new Vector3f().fromString(result.getString("position")),
-            				new Quaternion().fromString(result.getString("rotation"))
-            		);
+            		anzahl++;      
+            		PortalDefinition newPortalDef = new PortalDefinition();
+	            		newPortalDef.name     = result.getInt("name");
+	            		newPortalDef.dest     = result.getInt("destination");
+	            		newPortalDef.owner    = result.getLong("owner");
+	            		newPortalDef.areaID   = result.getLong("areaid");
+	            		newPortalDef.position = new Vector3f().fromString(result.getString("position"));
+	            		newPortalDef.rotation = new Quaternion().fromString(result.getString("rotation"));
+	            		newPortalDef.state    = PortalState.valueOf(result.getInt("state"));
             		
-        			newPortal.definition.name 	     = result.getInt("name");
-        			newPortal.definition.destination = result.getInt("destination");
-        			newPortal.definition.owner       = result.getLong("owner");
-            		newPortal.definition.state = PortalState.valueOf(result.getInt("state"));//PortalPrefab.PortalState.ready;
+            		PortalPrefab newPortal = new PortalPrefab(
+        				theResources,
+        				newPortalDef
+            		);
             		newPortal.setLayer(Layer.OBJECT);
             		
             		//player.addGameObject(newPortal); 
@@ -193,6 +187,7 @@ public class PortalDatabase
 	
 	private boolean OpenDatabase ()
 	{
+		boolean ret = true;
 		try
 		{
 			database = plugin.getSQLiteConnection(World.getWorldFolder() + "/" + databaseName);
@@ -200,7 +195,7 @@ public class PortalDatabase
 		catch (Exception e) 
 		{
 		   DebugOut("Something went wrong (open Database).");
-		   return false;
+		   ret = false;
 		}
 		finally
 		{
@@ -209,16 +204,15 @@ public class PortalDatabase
 			DebugOut("Database Name : " + databaseName);
 			
 		}
-		return true;
+		return ret;
 	}
-
 	public void CloseDatabase ()
 	{
 		database.close();
 	}
-	
- 	private boolean CreateDatabaseTable ()
+	private boolean CreateDatabaseTables ()
 	{
+ 		boolean ret = true;
 		try
 		{
 			database.execute("CREATE TABLE IF NOT EXISTS `portals` ("
@@ -226,6 +220,7 @@ public class PortalDatabase
 				+ "		    `name`        INTEGER PRIMARY KEY, "
 				+ " 		`destination` INTEGER, "
 				+ "			`owner`       VARCHAR(255), "
+				+ "         `areaid`      VARCHAR(255), "
 				+ "         `state`       INTEGER, "
 				+ "			`position`    VARCHAR(255), "
 		        + "         `rotation`    VARCHAR(255) " 
@@ -236,16 +231,15 @@ public class PortalDatabase
 		{
             //Just print the whole stack trace, it's easier for debugging...
         	DebugOut ("SQL Error while creating the database");
-            return false;
+            ret = false;
         }	
 		finally
 		{
 			DebugOut ("Database succesfully created.");           
 		}
-		return true;
+		return ret;
 	}
-	
- 	public boolean ClearDatabase ()
+	public boolean ClearDatabase ()
  	{
  		try
  		{
